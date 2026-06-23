@@ -80,8 +80,7 @@ class WPRR_Core
         );
 
         wp_localize_script('wprr-modal-js', 'wprr_modal_ajax', [
-            'ajax_url' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('wprr_modal_nonce')
+            'ajax_url' => admin_url('admin-ajax.php')
         ]);
 
         // Enqueue Chart.js for Analysis Views
@@ -154,8 +153,6 @@ class WPRR_Core
      */
     public function ajax_filter_results()
     {
-        check_ajax_referer('wprr_modal_nonce', 'nonce');
-
         $page = isset($_POST['wprr_page']) ? max(1, absint($_POST['wprr_page'])) : 1;
         $distance = isset($_POST['wprr_distance']) ? sanitize_text_field($_POST['wprr_distance']) : '';
         $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';

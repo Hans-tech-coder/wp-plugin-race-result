@@ -55,7 +55,6 @@ jQuery(document).ready(function ($) {
             type: 'POST',
             data: {
                 action: 'wprr_filter_results',
-                nonce: wprr_modal_ajax.nonce,
                 wprr_page: page,
                 wprr_distance: distance,
                 search: search,
