@@ -95,8 +95,10 @@ jQuery(document).ready(function($) {
                     
                     var headers = (sheetRows[headerRowIndex] || []).map(String).map(function(s) { return s.trim(); });
                     
-                    // Data starts after the detected header row
-                    sheetsData[name] = sheetRows.slice(headerRowIndex + 1);
+                    // Data starts after the detected header row, filtering out completely empty rows
+                    sheetsData[name] = sheetRows.slice(headerRowIndex + 1).filter(function(row) {
+                        return row.some(function(cell) { return String(cell).trim() !== ''; });
+                    });
                     
                     mappings[name] = {
                         categoryId: '',
