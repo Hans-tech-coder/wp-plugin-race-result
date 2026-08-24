@@ -111,8 +111,8 @@ class WP_Race_Results_Admin
 
         wp_enqueue_script($this->plugin_name, $script_url, array('jquery', 'wp-color-picker'), $version, false);
 
-        // Enqueue scripts specifically for the import page
-        if (isset($_GET['page']) && $_GET['page'] === 'wp_race_results_import') {
+        // Enqueue scripts specifically for the results page (now contains the import modal)
+        if (isset($_GET['page']) && $_GET['page'] === 'wp_race_results_results') {
             wp_enqueue_script('sheetjs', 'https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js', array(), null, true);
             
             $mapper_url = plugin_dir_url(__FILE__) . '../assets/js/wprr-csv-mapper.js';
@@ -202,16 +202,6 @@ class WP_Race_Results_Admin
             'manage_options',
             'wp_race_results_results',
             array($this, 'display_plugin_results_page')
-        );
-
-        // Add submenu page (Import).
-        add_submenu_page(
-            'wp_race_results',
-            'Import Race Results', // Page title
-            'Import Results', // Menu title
-            'manage_options',
-            'wp_race_results_import',
-            array($this, 'display_plugin_import_page')
         );
 
         // Add submenu page (Settings).
@@ -769,11 +759,10 @@ class WP_Race_Results_Admin
             $results = $wpdb->get_results($sql);
         }
         ?>
-        <div class="wrap">
+        <div class="wrap wprr-results-wrap">
             <h2>
                 <?php echo esc_html(get_admin_page_title()); ?>
-                <a href="<?php echo esc_url(admin_url('admin.php?page=wp_race_results_results&action=new')); ?>"
-                    class="page-title-action">Add New Result</a>
+                <a href="#" id="wprr-open-upload-modal" class="page-title-action">+ Upload Result</a>
             </h2>
             <?php if (!empty($_GET['message'])): ?>
                 <?php if ('bulk_deleted' === $_GET['message']): ?>
@@ -893,6 +882,76 @@ class WP_Race_Results_Admin
                     </tbody>
                 </table>
             </form>
+            
+            <!-- Upload Results Modal -->
+            <div id="wprr-upload-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 9999; overflow-y: auto;">
+                <div style="background: #fff; max-width: 1000px; margin: 50px auto; padding: 20px; border-radius: 8px; position: relative;">
+                    <span id="wprr-close-modal" style="position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer;">&times;</span>
+                    <h2>Import Results</h2>
+                    
+                    <div id="wprr-upload-container" class="card" style="max-width: 1000px; padding: 20px; margin-top: 20px; max-width: 100%;">
+                        <div id="wprr-upload-zone" style="border: 2px dashed #ccc; padding: 40px; text-align: center; cursor: pointer; border-radius: 5px;">
+                            <h3>Drop your Excel or CSV file here</h3>
+                            <p>Or click to browse</p>
+                            <input type="file" id="wprr-csv-file" accept=".xlsx, .xls, .csv" style="display: none;">
+                        </div>
+                        
+                        <div id="wprr-mapping-section" style="display: none; margin-top: 30px;">
+                            <h3>Map Your Columns</h3>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <label><strong>1. Select Event:</strong></label><br>
+                                <select id="wprr-event-select" style="width: 100%; max-width: 400px; margin-top: 5px;">
+                                    <option value="">-- Choose an Event --</option>
+                                    <?php 
+                                    $events_data = array();
+                                    foreach ($filter_events as $e): 
+                                        $events_data[] = array(
+                                            'id' => $e->id,
+                                            'name' => $e->event_name,
+                                            'categories' => !empty($e->distance_categories) ? array_map('trim', explode(',', $e->distance_categories)) : array()
+                                        );
+                                    ?>
+                                        <option value="<?php echo esc_attr($e->id); ?>"><?php echo esc_html($e->event_name); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            
+                            <div id="wprr-sheets-container"></div>
+                            
+                            <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+                                <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                                    <input type="checkbox" id="wprr-replace-data"> Replace existing results for the selected distances (checked) or append (unchecked)
+                                </label>
+                                <button id="wprr-process-btn" class="button button-primary button-large">Process & Upload Results</button>
+                            </div>
+                        </div>
+                        
+                        <div id="wprr-messages" style="margin-top: 20px;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+                window.wprrEventsData = <?php echo json_encode($events_data); ?>;
+                jQuery(document).ready(function($) {
+                    $('#wprr-open-upload-modal').on('click', function(e) {
+                        e.preventDefault();
+                        $('#wprr-upload-modal').fadeIn();
+                    });
+                    $('#wprr-close-modal, #wprr-upload-modal').on('click', function(e) {
+                        if (e.target === this) {
+                            $('#wprr-upload-modal').fadeOut();
+                        }
+                    });
+                });
+            </script>
+            <style>
+                .wprr-sheet-panel { background: #f9f9f9; border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 4px; }
+                .wprr-mapping-grid { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; }
+                .wprr-mapping-item { flex: 1; min-width: 150px; }
+                .wprr-mapping-item select { width: 100%; }
+            </style>
         </div>
         <?php
     }
@@ -1009,76 +1068,6 @@ class WP_Race_Results_Admin
                 <?php submit_button($result ? 'Update Result' : 'Add Result'); ?>
             </form>
         </div>
-        <?php
-    }
-    /**
-     * Render the import page.
-     *
-     * @since 1.0.0
-     */
-    public function display_plugin_import_page()
-    {
-        global $wpdb;
-        $table_events = $wpdb->prefix . 'race_events';
-        $events = $wpdb->get_results("SELECT id, event_name, distance_categories FROM $table_events ORDER BY created_at DESC");
-        
-        // Pass events to JS
-        $events_data = array();
-        foreach ($events as $e) {
-            $events_data[] = array(
-                'id' => $e->id,
-                'name' => $e->event_name,
-                'categories' => !empty($e->distance_categories) ? array_map('trim', explode(',', $e->distance_categories)) : array()
-            );
-        }
-        ?>
-        <div class="wrap wprr-import-wrap">
-            <h2>Modern Result Importer</h2>
-            
-            <div id="wprr-upload-container" class="card" style="max-width: 1000px; padding: 20px; margin-top: 20px;">
-                <div id="wprr-upload-zone" style="border: 2px dashed #ccc; padding: 40px; text-align: center; cursor: pointer; border-radius: 5px;">
-                    <h3>Drop your Excel or CSV file here</h3>
-                    <p>Or click to browse</p>
-                    <input type="file" id="wprr-csv-file" accept=".xlsx, .xls, .csv" style="display: none;">
-                </div>
-                
-                <div id="wprr-mapping-section" style="display: none; margin-top: 30px;">
-                    <h3>Map Your Columns</h3>
-                    
-                    <div style="margin-bottom: 20px;">
-                        <label><strong>1. Select Event:</strong></label><br>
-                        <select id="wprr-event-select" style="width: 100%; max-width: 400px; margin-top: 5px;">
-                            <option value="">-- Choose an Event --</option>
-                            <?php foreach ($events_data as $e): ?>
-                                <option value="<?php echo esc_attr($e['id']); ?>"><?php echo esc_html($e['name']); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    
-                    <div id="wprr-sheets-container"></div>
-                    
-                    <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
-                        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
-                            <input type="checkbox" id="wprr-replace-data"> Replace existing results for the selected distances (checked) or append (unchecked)
-                        </label>
-                        <button id="wprr-process-btn" class="button button-primary button-large">Process & Upload Results</button>
-                    </div>
-                </div>
-                
-                <div id="wprr-messages" style="margin-top: 20px;"></div>
-            </div>
-            
-            <script>
-                window.wprrEventsData = <?php echo json_encode($events_data); ?>;
-            </script>
-        </div>
-        
-        <style>
-            .wprr-sheet-panel { background: #f9f9f9; border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 4px; }
-            .wprr-mapping-grid { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; }
-            .wprr-mapping-item { flex: 1; min-width: 150px; }
-            .wprr-mapping-item select { width: 100%; }
-        </style>
         <?php
     }
 
