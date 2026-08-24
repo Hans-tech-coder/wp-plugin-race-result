@@ -753,13 +753,24 @@ class WP_Race_Results_Admin
             $params[] = $search_term;
         }
 
-        $sql .= " ORDER BY r.id DESC";
-
+        $count_sql = str_replace("SELECT r.*, e.event_name", "SELECT COUNT(r.id)", $sql);
+        
         if (!empty($params)) {
-            $results = $wpdb->get_results($wpdb->prepare($sql, $params));
+            $total_items = $wpdb->get_var($wpdb->prepare($count_sql, $params));
         } else {
-            $results = $wpdb->get_results($sql);
+            $total_items = $wpdb->get_var($count_sql);
         }
+        
+        $per_page = 20;
+        $current_page = isset($_GET['paged']) ? max(1, absint($_GET['paged'])) : 1;
+        $total_pages = ceil($total_items / $per_page);
+        $offset = ($current_page - 1) * $per_page;
+
+        $sql .= " ORDER BY r.id DESC LIMIT %d OFFSET %d";
+        $params[] = $per_page;
+        $params[] = $offset;
+
+        $results = $wpdb->get_results($wpdb->prepare($sql, $params));
         ?>
         <div class="wrap wprr-results-wrap">
             <h2>
@@ -827,7 +838,20 @@ class WP_Race_Results_Admin
                         <input type="submit" id="doaction" class="button action" value="Apply">
                     </div>
                     <div class="tablenav-pages">
-                        <span class="displaying-num"><?php echo count($results); ?> items</span>
+                        <span class="displaying-num"><?php echo esc_html(sprintf(_n('%s item', '%s items', $total_items), number_format_i18n($total_items))); ?></span>
+                        <?php 
+                        $page_links = paginate_links( array(
+                            'base' => add_query_arg( 'paged', '%#%' ),
+                            'format' => '',
+                            'prev_text' => '&laquo;',
+                            'next_text' => '&raquo;',
+                            'total' => $total_pages,
+                            'current' => $current_page
+                        ));
+                        if ( $page_links ) : 
+                        ?>
+                            <span class="pagination-links"><?php echo $page_links; ?></span>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -882,6 +906,21 @@ class WP_Race_Results_Admin
                         <?php endif; ?>
                     </tbody>
                 </table>
+                <div class="tablenav bottom">
+                    <div class="alignleft actions bulkactions">
+                        <select name="action2" id="bulk-action-selector-bottom">
+                            <option value="-1">Bulk Actions</option>
+                            <option value="bulk-delete">Delete</option>
+                        </select>
+                        <input type="submit" id="doaction2" class="button action" value="Apply">
+                    </div>
+                    <div class="tablenav-pages">
+                        <span class="displaying-num"><?php echo esc_html(sprintf(_n('%s item', '%s items', $total_items), number_format_i18n($total_items))); ?></span>
+                        <?php if ( $page_links ) : ?>
+                            <span class="pagination-links"><?php echo $page_links; ?></span>
+                        <?php endif; ?>
+                    </div>
+                </div>
             </form>
             
             <!-- Upload Results Modal -->
