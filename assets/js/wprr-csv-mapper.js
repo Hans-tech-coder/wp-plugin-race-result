@@ -67,23 +67,44 @@ jQuery(document).ready(function($) {
 
                 sheetNames.forEach(function(name) {
                     var ws = workbook.Sheets[name];
-                    var sheetRows = XLSX.utils.sheet_to_json(ws, {header: 1, raw: false, dateNF: "hh:mm:ss"});
+                    var sheetRows = XLSX.utils.sheet_to_json(ws, {header: 1, raw: false, dateNF: "hh:mm:ss", defval: ""});
                     
-                    sheetsData[name] = sheetRows.slice(1);
+                    if (sheetRows.length === 0) return;
                     
-                    if (sheetRows.length > 0) {
-                        var headers = (sheetRows[0] || []).map(String);
+                    // Dynamic Header Detection: Find the row with the most non-empty columns, or one with keywords
+                    var headerRowIndex = 0;
+                    var maxCols = 0;
+                    
+                    for (var i = 0; i < Math.min(15, sheetRows.length); i++) {
+                        var row = sheetRows[i];
+                        var nonEmpties = row.filter(function(c) { return String(c).trim() !== ''; }).length;
                         
-                        mappings[name] = {
-                            categoryId: '',
-                            bibCol: headers.find(h => h.toLowerCase().includes('bib')) || '',
-                            nameCol: headers.find(h => h.toLowerCase().includes('name') || h.toLowerCase().includes('participant')) || '',
-                            genderCol: headers.find(h => h.toLowerCase().includes('gender') || h.toLowerCase().includes('sex') || h.toLowerCase() === 'sx') || '',
-                            chipCol: headers.find(h => h.toLowerCase().includes('chip') || h.toLowerCase().includes('net') || h.toLowerCase().includes('time')) || '',
-                            gunCol: headers.find(h => h.toLowerCase().includes('gun') || h.toLowerCase().includes('gross')) || '',
-                            availableHeaders: headers.filter(h => h.trim() !== '')
-                        };
+                        var rowStr = row.join(' ').toLowerCase();
+                        var hasKeywords = rowStr.includes('bib') || rowStr.includes('name') || rowStr.includes('time') || rowStr.includes('rank');
+                        
+                        if (hasKeywords && nonEmpties >= 2) {
+                            headerRowIndex = i;
+                            break;
+                        } else if (nonEmpties > maxCols) {
+                            headerRowIndex = i;
+                            maxCols = nonEmpties;
+                        }
                     }
+                    
+                    var headers = (sheetRows[headerRowIndex] || []).map(String).map(function(s) { return s.trim(); });
+                    
+                    // Data starts after the detected header row
+                    sheetsData[name] = sheetRows.slice(headerRowIndex + 1);
+                    
+                    mappings[name] = {
+                        categoryId: '',
+                        bibCol: headers.find(h => h.toLowerCase().includes('bib')) || '',
+                        nameCol: headers.find(h => h.toLowerCase().includes('name') || h.toLowerCase().includes('participant') || h.toLowerCase().includes('runner')) || '',
+                        genderCol: headers.find(h => h.toLowerCase().includes('gender') || h.toLowerCase().includes('sex') || h.toLowerCase() === 'sx') || '',
+                        chipCol: headers.find(h => h.toLowerCase().includes('chip') || h.toLowerCase().includes('net') || h.toLowerCase().includes('time')) || '',
+                        gunCol: headers.find(h => h.toLowerCase().includes('gun') || h.toLowerCase().includes('gross')) || '',
+                        availableHeaders: headers.filter(h => h !== '')
+                    };
                 });
 
                 $mappingSection.show();
