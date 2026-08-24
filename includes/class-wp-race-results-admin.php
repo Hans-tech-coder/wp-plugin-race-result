@@ -105,12 +105,27 @@ class WP_Race_Results_Admin
         wp_enqueue_style('wp-color-picker');
 
         // Use plugin_dir_url to get the URL relative to this file's directory.
-        // We go up one level (../) to get to the plugin root, then into assets/js.
         $script_url = plugin_dir_url(__FILE__) . '../assets/js/wp-race-results-admin.js';
         $script_path = plugin_dir_path(__FILE__) . '../assets/js/wp-race-results-admin.js';
         $version = file_exists($script_path) ? filemtime($script_path) : $this->version;
 
         wp_enqueue_script($this->plugin_name, $script_url, array('jquery', 'wp-color-picker'), $version, false);
+
+        // Enqueue scripts specifically for the import page
+        if (isset($_GET['page']) && $_GET['page'] === 'wp_race_results_import') {
+            wp_enqueue_script('sheetjs', 'https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js', array(), null, true);
+            
+            $mapper_url = plugin_dir_url(__FILE__) . '../assets/js/wprr-csv-mapper.js';
+            $mapper_path = plugin_dir_path(__FILE__) . '../assets/js/wprr-csv-mapper.js';
+            $mapper_version = file_exists($mapper_path) ? filemtime($mapper_path) : $this->version;
+            wp_enqueue_script('wprr-csv-mapper', $mapper_url, array('jquery', 'sheetjs'), $mapper_version, true);
+            
+            // Pass ajax URL to script
+            wp_localize_script('wprr-csv-mapper', 'wprr_ajax', array(
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'nonce'    => wp_create_nonce('wprr_import_nonce')
+            ));
+        }
 
     }
 
@@ -125,6 +140,9 @@ class WP_Race_Results_Admin
         add_action('admin_init', array($this, 'register_admin_settings'));
         add_action('admin_init', array($this, 'handle_form_submissions'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_scripts'));
+        
+        // AJAX hook for importing mapped results
+        add_action('wp_ajax_wprr_process_mapped_results', array($this, 'process_mapped_results_ajax'));
     }
 
     /**
@@ -1000,60 +1018,65 @@ class WP_Race_Results_Admin
     {
         global $wpdb;
         $table_events = $wpdb->prefix . 'race_events';
-        $events = $wpdb->get_results("SELECT id, event_name FROM $table_events ORDER BY created_at DESC");
+        $events = $wpdb->get_results("SELECT id, event_name, distance_categories FROM $table_events ORDER BY created_at DESC");
+        
+        // Pass events to JS
+        $events_data = array();
+        foreach ($events as $e) {
+            $events_data[] = array(
+                'id' => $e->id,
+                'name' => $e->event_name,
+                'categories' => !empty($e->distance_categories) ? array_map('trim', explode(',', $e->distance_categories)) : array()
+            );
+        }
         ?>
-        <div class="wrap">
-            <h2>Import Results</h2>
-            <?php if (!empty($_GET['message']) && 'imported' === $_GET['message']): ?>
-                <div class="notice notice-success is-dismissible">
-                    <p><?php echo sprintf('Successfully imported %d results.', absint($_GET['count'])); ?></p>
+        <div class="wrap wprr-import-wrap">
+            <h2>Modern Result Importer</h2>
+            
+            <div id="wprr-upload-container" class="card" style="max-width: 1000px; padding: 20px; margin-top: 20px;">
+                <div id="wprr-upload-zone" style="border: 2px dashed #ccc; padding: 40px; text-align: center; cursor: pointer; border-radius: 5px;">
+                    <h3>Drop your Excel or CSV file here</h3>
+                    <p>Or click to browse</p>
+                    <input type="file" id="wprr-csv-file" accept=".xlsx, .xls, .csv" style="display: none;">
                 </div>
-            <?php endif; ?>
-
-            <div class="card" style="max-width: 600px; padding: 20px; margin-top: 20px;">
-                <form method="post" enctype="multipart/form-data"
-                    action="<?php echo esc_url(admin_url('admin.php?page=wp_race_results_import')); ?>">
-                    <?php wp_nonce_field('wp_race_import_csv', 'wp_race_import_nonce'); ?>
-                    <input type="hidden" name="wp_race_import_csv" value="1">
-
-                    <p>Upload a CSV file to import race results. The CSV should have the following columns in order:</p>
-                    <ol>
-                        <li>Bib Number</li>
-                        <li>Full Name</li>
-                        <li>Gender (Male/Female)</li>
-                        <li>Distance (e.g. 10K)</li>
-                        <li>Gun Time (HH:MM:SS)</li>
-                        <li>Chip Time (HH:MM:SS)</li>
-                        <li>Rank Overall</li>
-                        <li>Rank Gender</li>
-                    </ol>
-
-                    <table class="form-table">
-                        <tr>
-                            <th scope="row"><label for="event_id">Select Event</label></th>
-                            <td>
-                                <select name="event_id" id="event_id" required>
-                                    <option value="">Select Event</option>
-                                    <?php foreach ($events as $event): ?>
-                                        <option value="<?php echo esc_attr($event->id); ?>">
-                                            <?php echo esc_html($event->event_name); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><label for="csv_file">CSV File</label></th>
-                            <td>
-                                <input type="file" name="csv_file" id="csv_file" accept=".csv" required>
-                            </td>
-                        </tr>
-                    </table>
-
-                    <?php submit_button('Import Results'); ?>
-                </form>
+                
+                <div id="wprr-mapping-section" style="display: none; margin-top: 30px;">
+                    <h3>Map Your Columns</h3>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label><strong>1. Select Event:</strong></label><br>
+                        <select id="wprr-event-select" style="width: 100%; max-width: 400px; margin-top: 5px;">
+                            <option value="">-- Choose an Event --</option>
+                            <?php foreach ($events_data as $e): ?>
+                                <option value="<?php echo esc_attr($e['id']); ?>"><?php echo esc_html($e['name']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div id="wprr-sheets-container"></div>
+                    
+                    <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+                        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                            <input type="checkbox" id="wprr-replace-data"> Replace existing results for the selected distances (checked) or append (unchecked)
+                        </label>
+                        <button id="wprr-process-btn" class="button button-primary button-large">Process & Upload Results</button>
+                    </div>
+                </div>
+                
+                <div id="wprr-messages" style="margin-top: 20px;"></div>
             </div>
+            
+            <script>
+                window.wprrEventsData = <?php echo json_encode($events_data); ?>;
+            </script>
         </div>
+        
+        <style>
+            .wprr-sheet-panel { background: #f9f9f9; border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 4px; }
+            .wprr-mapping-grid { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; }
+            .wprr-mapping-item { flex: 1; min-width: 150px; }
+            .wprr-mapping-item select { width: 100%; }
+        </style>
         <?php
     }
 
@@ -1123,5 +1146,150 @@ class WP_Race_Results_Admin
             </form>
         </div>
         <?php
+    }
+    /**
+     * AJAX handler for processing mapped CSV results
+     *
+     * @since 1.0.0
+     */
+    public function process_mapped_results_ajax()
+    {
+        check_ajax_referer('wprr_import_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('You do not have permission to do this.');
+        }
+
+        $event_id = isset($_POST['event_id']) ? absint($_POST['event_id']) : 0;
+        if (!$event_id) {
+            wp_send_json_error('Invalid event ID.');
+        }
+
+        $replace_data = isset($_POST['replace_data']) && $_POST['replace_data'] == '1';
+        $results_json = isset($_POST['results']) ? wp_unslash($_POST['results']) : '';
+        $results = json_decode($results_json, true);
+
+        if (empty($results) || !is_array($results)) {
+            wp_send_json_error('No valid results data provided.');
+        }
+
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'race_results';
+
+        // Find all unique distances in the payload
+        $affected_distances = array();
+        foreach ($results as $r) {
+            if (!empty($r['distance']) && !in_array($r['distance'], $affected_distances)) {
+                $affected_distances[] = $r['distance'];
+            }
+        }
+
+        // 1. Optional: Replace existing data for the uploaded distances
+        if ($replace_data) {
+            foreach ($affected_distances as $dist) {
+                $wpdb->query($wpdb->prepare(
+                    "DELETE FROM $table_name WHERE event_id = %d AND distance = %s",
+                    $event_id,
+                    sanitize_text_field($dist)
+                ));
+            }
+        }
+
+        // 2. Insert new results
+        $insert_count = 0;
+        foreach ($results as $r) {
+            // Minimal validation
+            if (empty($r['bib_number']) || empty($r['full_name']) || empty($r['chip_time'])) {
+                continue;
+            }
+
+            $inserted = $wpdb->insert($table_name, array(
+                'event_id'     => $event_id,
+                'distance'     => sanitize_text_field($r['distance']),
+                'bib_number'   => sanitize_text_field($r['bib_number']),
+                'full_name'    => sanitize_text_field($r['full_name']),
+                'gender'       => sanitize_text_field($r['gender']),
+                'chip_time'    => sanitize_text_field($r['chip_time']),
+                'gun_time'     => isset($r['gun_time']) ? sanitize_text_field($r['gun_time']) : '',
+                'rank_overall' => 0, // Will be computed shortly
+                'rank_gender'  => 0  // Will be computed shortly
+            ));
+
+            if ($inserted) {
+                $insert_count++;
+            }
+        }
+
+        // 3. Auto-calculate rankings for affected distances
+        foreach ($affected_distances as $dist) {
+            $this->recalculate_ranks_for_distance($event_id, sanitize_text_field($dist));
+        }
+
+        wp_send_json_success(array(
+            'message' => sprintf('Successfully processed and saved %d results. Rankings have been automatically calculated!', $insert_count),
+            'count' => $insert_count
+        ));
+    }
+
+    /**
+     * Recalculates Overall and Gender Ranks for a specific event distance based on chip_time.
+     *
+     * @since 1.0.0
+     */
+    private function recalculate_ranks_for_distance($event_id, $distance)
+    {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'race_results';
+
+        // 1. Calculate Overall Ranks
+        // We order by chip_time ASC. Null or empty string goes to the end or is ignored.
+        $overall_results = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, chip_time FROM $table_name 
+             WHERE event_id = %d AND distance = %s 
+             AND chip_time != '' AND chip_time IS NOT NULL
+             ORDER BY chip_time ASC",
+            $event_id,
+            $distance
+        ));
+
+        $rank = 1;
+        foreach ($overall_results as $row) {
+            $wpdb->update($table_name, array('rank_overall' => $rank), array('id' => $row->id));
+            $rank++;
+        }
+
+        // 2. Calculate Gender Ranks (Male)
+        $male_results = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, chip_time FROM $table_name 
+             WHERE event_id = %d AND distance = %s 
+             AND LOWER(gender) IN ('m', 'male')
+             AND chip_time != '' AND chip_time IS NOT NULL
+             ORDER BY chip_time ASC",
+            $event_id,
+            $distance
+        ));
+
+        $rank = 1;
+        foreach ($male_results as $row) {
+            $wpdb->update($table_name, array('rank_gender' => $rank), array('id' => $row->id));
+            $rank++;
+        }
+
+        // 3. Calculate Gender Ranks (Female)
+        $female_results = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, chip_time FROM $table_name 
+             WHERE event_id = %d AND distance = %s 
+             AND LOWER(gender) IN ('f', 'female')
+             AND chip_time != '' AND chip_time IS NOT NULL
+             ORDER BY chip_time ASC",
+            $event_id,
+            $distance
+        ));
+
+        $rank = 1;
+        foreach ($female_results as $row) {
+            $wpdb->update($table_name, array('rank_gender' => $rank), array('id' => $row->id));
+            $rank++;
+        }
     }
 }
