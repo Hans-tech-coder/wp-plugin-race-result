@@ -157,11 +157,11 @@ jQuery(document).ready(function($) {
             
             // Generate field mapping dropdowns
             var fields = [
-                { id: 'bibCol', label: 'Bib Number *' },
-                { id: 'nameCol', label: 'Runner Name *' },
-                { id: 'genderCol', label: 'Gender *' },
-                { id: 'chipCol', label: 'Chip Time *' },
-                { id: 'gunCol', label: 'Gun Time (Optional)' }
+                { id: 'bibCol', label: 'Bib' },
+                { id: 'nameCol', label: 'Name' },
+                { id: 'genderCol', label: 'Gender' },
+                { id: 'chipCol', label: 'Chip Time' },
+                { id: 'gunCol', label: 'Gun Time' }
             ];
             
             fields.forEach(function(f) {
