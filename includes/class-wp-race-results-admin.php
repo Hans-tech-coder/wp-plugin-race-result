@@ -782,12 +782,6 @@ class WP_Race_Results_Admin
             <form method="get" action="<?php echo esc_url(admin_url('admin.php')); ?>">
                 <input type="hidden" name="page" value="wp_race_results_results">
 
-                <p class="search-box">
-                    <label class="screen-reader-text" for="search-input">Search Results:</label>
-                    <input type="search" id="search-input" name="search" value="<?php echo isset($_GET['search']) ? esc_attr($_GET['search']) : ''; ?>">
-                    <input type="submit" id="search-submit" class="button" value="Search Results">
-                </p>
-
                 <div style="margin-bottom: 20px; background: #fff; padding: 10px; border: 1px solid #ccd0d4; box-shadow: 0 1px 1px rgba(0,0,0,.04); clear: both; overflow: hidden;">
                     <div class="alignleft actions" style="margin: 0;">
                         <select name="filter_event" onchange="this.form.submit()">
@@ -811,6 +805,12 @@ class WP_Race_Results_Admin
                         <input type="submit" class="button" value="Filter">
                         <a href="<?php echo esc_url(admin_url('admin.php?page=wp_race_results_results')); ?>"
                             class="button">Reset</a>
+                    </div>
+                    
+                    <div class="alignright" style="margin: 0;">
+                        <label class="screen-reader-text" for="search-input">Search Results:</label>
+                        <input type="search" id="search-input" name="search" placeholder="Search Name or Bib" value="<?php echo isset($_GET['search']) ? esc_attr($_GET['search']) : ''; ?>">
+                        <input type="submit" id="search-submit" class="button" value="Search">
                     </div>
                 </div>
             </form>
