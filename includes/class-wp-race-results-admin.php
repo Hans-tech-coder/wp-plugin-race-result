@@ -745,10 +745,12 @@ class WP_Race_Results_Admin
             $params[] = sanitize_text_field($_GET['filter_distance']);
         }
 
-        // Apply Rank Filter
-        if (!empty($_GET['filter_rank'])) {
-            $sql .= " AND r.rank_overall <= %d";
-            $params[] = absint($_GET['filter_rank']);
+        // Apply Search Filter
+        if (!empty($_GET['search'])) {
+            $search_term = '%' . $wpdb->esc_like(sanitize_text_field($_GET['search'])) . '%';
+            $sql .= " AND (r.full_name LIKE %s OR r.bib_number LIKE %s)";
+            $params[] = $search_term;
+            $params[] = $search_term;
         }
 
         $sql .= " ORDER BY r.id DESC";
@@ -800,10 +802,10 @@ class WP_Race_Results_Admin
                         <?php endforeach; ?>
                     </select>
 
-                    <label for="filter_rank" style="margin-left:5px;">Max Rank:</label>
-                    <input type="number" name="filter_rank" id="filter_rank"
-                        value="<?php echo isset($_GET['filter_rank']) ? absint($_GET['filter_rank']) : ''; ?>"
-                        style="width: 60px;" placeholder="Any">
+                    <label for="search" style="margin-left:5px;" class="screen-reader-text">Search:</label>
+                    <input type="search" name="search" id="search"
+                        value="<?php echo isset($_GET['search']) ? esc_attr($_GET['search']) : ''; ?>"
+                        style="width: 150px;" placeholder="Search Name or Bib">
 
                     <input type="submit" class="button" value="Filter">
                     <a href="<?php echo esc_url(admin_url('admin.php?page=wp_race_results_results')); ?>"
@@ -835,7 +837,6 @@ class WP_Race_Results_Admin
                                 <label class="screen-reader-text" for="cb-select-all-1">Select All</label>
                                 <input id="wprr-select-all" type="checkbox">
                             </td>
-                            <th width="50">ID</th>
                             <th>Event</th>
                             <th>Bib</th>
                             <th>Name</th>
@@ -855,7 +856,6 @@ class WP_Race_Results_Admin
                                     <th scope="row" class="check-column">
                                         <input type="checkbox" name="result_ids[]" value="<?php echo absint($result->id); ?>">
                                     </th>
-                                    <td><?php echo absint($result->id); ?></td>
                                     <td><?php echo esc_html($result->event_name ? $result->event_name : 'Unknown Event'); ?></td>
                                     <td><?php echo absint($result->bib_number); ?></td>
                                     <td><?php echo esc_html($result->full_name); ?></td>
