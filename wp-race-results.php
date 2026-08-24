@@ -30,7 +30,7 @@ if (!defined('WPINC')) {
 /**
  * Currently plugin version.
  */
-define('WPRR_VERSION', '1.0.1');
+define('WPRR_VERSION', '1.0.2');
 
 /**
  * The code that runs during plugin activation.
@@ -52,6 +52,20 @@ function deactivate_wp_race_results()
 
 register_activation_hook(__FILE__, 'activate_wp_race_results');
 register_deactivation_hook(__FILE__, 'deactivate_wp_race_results');
+
+/**
+ * Initialize Plugin Update Checker
+ */
+if (file_exists(plugin_dir_path(__FILE__) . 'plugin-update-checker/plugin-update-checker.php')) {
+    require plugin_dir_path(__FILE__) . 'plugin-update-checker/plugin-update-checker.php';
+    $wprr_update_checker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
+        'https://github.com/Hans-tech-coder/wp-plugin-race-result',
+        __FILE__,
+        'wp-race-results'
+    );
+    // Set branch to main or master if needed
+    $wprr_update_checker->setBranch('main');
+}
 
 /**
  * Initialize the plugin core
