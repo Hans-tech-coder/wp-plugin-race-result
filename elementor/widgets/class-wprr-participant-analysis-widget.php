@@ -483,7 +483,7 @@ class WPRR_Participant_Analysis_Widget extends \Elementor\Widget_Base
                             <div class="wprr-stats-column">
                                 <div class="wprr-stat-item">
                                     <div class="wprr-stat-value"><?php echo esc_html($rank_gun_overall); ?></div>
-                                    <div class="wprr-stat-label">Rank Overall</div>
+                                    <div class="wprr-stat-label">Rank Category</div>
                                 </div>
                                 <div class="wprr-stat-item">
                                     <div class="wprr-stat-value"><?php echo esc_html($rank_gun_gender); ?></div>
@@ -510,7 +510,7 @@ class WPRR_Participant_Analysis_Widget extends \Elementor\Widget_Base
                             <div class="wprr-stats-column">
                                 <div class="wprr-stat-item">
                                     <div class="wprr-stat-value"><?php echo esc_html($rank_chip_overall); ?></div>
-                                    <div class="wprr-stat-label">Rank Overall</div>
+                                    <div class="wprr-stat-label">Rank Category</div>
                                 </div>
                                 <div class="wprr-stat-item">
                                     <div class="wprr-stat-value"><?php echo esc_html($rank_chip_gender); ?></div>
@@ -609,7 +609,7 @@ class WPRR_Participant_Analysis_Widget extends \Elementor\Widget_Base
                                         const idx = context.dataIndex;
                                         const val = context.raw;
                                         if (ds === 0) {
-                                            return (idx === 0) ? ' Finished after you: ' + val : ' Rank Overall: ' + val;
+                                            return (idx === 0) ? ' Finished after you: ' + val : ' Rank Category: ' + val;
                                         } else {
                                             return (idx === 0) ? ' ' + userGender + 's after you: ' + val : ' Rank ' + userGender + ': ' + val;
                                         }

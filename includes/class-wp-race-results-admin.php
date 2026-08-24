@@ -854,7 +854,8 @@ class WP_Race_Results_Admin
                             <th>Distance</th>
                             <th>Gun Time</th>
                             <th>Chip Time</th>
-                            <th>Rank Over.</th>
+                            <th>Rank Category</th>
+                            <th>Rank Gender</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -874,6 +875,7 @@ class WP_Race_Results_Admin
                                     <td><?php echo esc_html($result->gun_time); ?></td>
                                     <td><?php echo esc_html($result->chip_time); ?></td>
                                     <td><?php echo absint($result->rank_overall); ?></td>
+                                    <td><?php echo absint($result->rank_gender); ?></td>
                                     <td>
                                         <a
                                             href="<?php echo esc_url(admin_url('admin.php?page=wp_race_results_results&action=edit&result_id=' . $result->id)); ?>">Edit</a>
@@ -992,7 +994,7 @@ class WP_Race_Results_Admin
                                 placeholder="00:00:00"></td>
                     </tr>
                     <tr>
-                        <th scope="row"><label for="rank_overall">Rank Overall</label></th>
+                        <th scope="row"><label for="rank_overall">Rank Category</label></th>
                         <td><input name="rank_overall" type="number" id="rank_overall"
                                 value="<?php echo esc_attr($result ? $result->rank_overall : ''); ?>" class="regular-text">
                         </td>
