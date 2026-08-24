@@ -778,40 +778,41 @@ class WP_Race_Results_Admin
                 <?php endif; ?>
             <?php endif; ?>
 
-            <!-- Filters -->
-            <form method="get" action="<?php echo esc_url(admin_url('admin.php')); ?>"
-                style="margin-bottom: 20px; background: #fff; padding: 10px; border: 1px solid #ccd0d4; box-shadow: 0 1px 1px rgba(0,0,0,.04);">
+            <!-- Filters & Search -->
+            <form method="get" action="<?php echo esc_url(admin_url('admin.php')); ?>">
                 <input type="hidden" name="page" value="wp_race_results_results">
 
-                <div class="alignleft actions">
-                    <select name="filter_event" onchange="this.form.submit()">
-                        <option value="">All Events</option>
-                        <?php foreach ($filter_events as $event): ?>
-                            <option value="<?php echo absint($event->id); ?>" <?php selected(isset($_GET['filter_event']) ? $_GET['filter_event'] : '', $event->id); ?>>
-                                <?php echo esc_html($event->event_name); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                <p class="search-box">
+                    <label class="screen-reader-text" for="search-input">Search Results:</label>
+                    <input type="search" id="search-input" name="search" value="<?php echo isset($_GET['search']) ? esc_attr($_GET['search']) : ''; ?>">
+                    <input type="submit" id="search-submit" class="button" value="Search Results">
+                </p>
 
-                    <select name="filter_distance">
-                        <option value="">All Distances</option>
-                        <?php foreach ($filter_distances as $dist): ?>
-                            <option value="<?php echo esc_attr($dist); ?>" <?php selected(isset($_GET['filter_distance']) ? $_GET['filter_distance'] : '', $dist); ?>>
-                                <?php echo esc_html($dist); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                <div style="margin-bottom: 20px; background: #fff; padding: 10px; border: 1px solid #ccd0d4; box-shadow: 0 1px 1px rgba(0,0,0,.04); clear: both; overflow: hidden;">
+                    <div class="alignleft actions" style="margin: 0;">
+                        <select name="filter_event" onchange="this.form.submit()">
+                            <option value="">All Events</option>
+                            <?php foreach ($filter_events as $event): ?>
+                                <option value="<?php echo absint($event->id); ?>" <?php selected(isset($_GET['filter_event']) ? $_GET['filter_event'] : '', $event->id); ?>>
+                                    <?php echo esc_html($event->event_name); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
 
-                    <label for="search" style="margin-left:5px;" class="screen-reader-text">Search:</label>
-                    <input type="search" name="search" id="search"
-                        value="<?php echo isset($_GET['search']) ? esc_attr($_GET['search']) : ''; ?>"
-                        style="width: 150px;" placeholder="Search Name or Bib">
+                        <select name="filter_distance">
+                            <option value="">All Distances</option>
+                            <?php foreach ($filter_distances as $dist): ?>
+                                <option value="<?php echo esc_attr($dist); ?>" <?php selected(isset($_GET['filter_distance']) ? $_GET['filter_distance'] : '', $dist); ?>>
+                                    <?php echo esc_html($dist); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
 
-                    <input type="submit" class="button" value="Filter">
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=wp_race_results_results')); ?>"
-                        class="button">Reset</a>
+                        <input type="submit" class="button" value="Filter">
+                        <a href="<?php echo esc_url(admin_url('admin.php?page=wp_race_results_results')); ?>"
+                            class="button">Reset</a>
+                    </div>
                 </div>
-                <br class="clear">
             </form>
 
             <form method="post" action="<?php echo esc_url(admin_url('admin.php?page=wp_race_results_results')); ?>">

@@ -6,14 +6,14 @@
  * administrative area. This file also includes all of the plugin dependencies.
  *
  * @link              http://example.com
- * @since             1.3.6
+ * @since             1.3.7
  * @package           WP_Race_Results
  *
  * @wordpress-plugin
  * Plugin Name:       WP Race Results
  * Plugin URI:        http://example.com/plugin-name-uri/
  * Description:       A plugin to manage race results.
- * Version:           1.3.6
+ * Version:           1.3.7
  * Author:            HansTech
  * Author URI:        http://example.com/
  * License:           GPL-2.0+
@@ -30,7 +30,7 @@ if (!defined('WPINC')) {
 /**
  * Currently plugin version.
  */
-define('WPRR_VERSION', '1.3.6');
+define('WPRR_VERSION', '1.3.7');
 
 /**
  * The code that runs during plugin activation.
