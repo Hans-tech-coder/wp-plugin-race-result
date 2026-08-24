@@ -994,7 +994,7 @@ class WP_Race_Results_Admin
                                 placeholder="00:00:00"></td>
                     </tr>
                     <tr>
-                        <th scope="row"><label for="rank_overall">Rank Category</label></th>
+                        <th scope="row"><label for="rank_overall">Rank Overall</label></th>
                         <td><input name="rank_overall" type="number" id="rank_overall"
                                 value="<?php echo esc_attr($result ? $result->rank_overall : ''); ?>" class="regular-text">
                         </td>

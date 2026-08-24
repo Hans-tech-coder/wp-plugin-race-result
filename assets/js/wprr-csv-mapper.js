@@ -75,14 +75,16 @@ jQuery(document).ready(function($) {
                     var headerRowIndex = 0;
                     var maxCols = 0;
                     
-                    for (var i = 0; i < Math.min(15, sheetRows.length); i++) {
+                    for (var i = 0; i < Math.min(50, sheetRows.length); i++) {
                         var row = sheetRows[i];
                         var nonEmpties = row.filter(function(c) { return String(c).trim() !== ''; }).length;
                         
                         var rowStr = row.join(' ').toLowerCase();
-                        var hasKeywords = rowStr.includes('bib') || rowStr.includes('name') || rowStr.includes('time') || rowStr.includes('rank');
+                        // Only flag as keyword match if it really looks like a race result header
+                        var hasKeywords = (rowStr.includes('bib') || rowStr.includes('name') || rowStr.includes('participant')) 
+                                          && (rowStr.includes('time') || rowStr.includes('chip') || rowStr.includes('net') || rowStr.includes('gender'));
                         
-                        if (hasKeywords && nonEmpties >= 2) {
+                        if (hasKeywords && nonEmpties >= 3) {
                             headerRowIndex = i;
                             break;
                         } else if (nonEmpties > maxCols) {
@@ -155,11 +157,11 @@ jQuery(document).ready(function($) {
             
             // Generate field mapping dropdowns
             var fields = [
-                { id: 'bibCol', label: 'Bib' },
-                { id: 'nameCol', label: 'Name' },
-                { id: 'genderCol', label: 'Gender' },
-                { id: 'gunCol', label: 'Gun Time' },
-                { id: 'chipCol', label: 'Chip Time' }
+                { id: 'bibCol', label: 'Bib Number *' },
+                { id: 'nameCol', label: 'Runner Name *' },
+                { id: 'genderCol', label: 'Gender *' },
+                { id: 'chipCol', label: 'Chip Time *' },
+                { id: 'gunCol', label: 'Gun Time (Optional)' }
             ];
             
             fields.forEach(function(f) {
